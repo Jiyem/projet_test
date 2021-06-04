@@ -42,4 +42,4 @@ jobs:
       run: php bin/console doctrine:fixtures:load --env test -n
 
     - name: Run test suite
-      run: composer run-script test
+      run: php bin/phpunit
