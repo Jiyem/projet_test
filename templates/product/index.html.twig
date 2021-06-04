@@ -1,0 +1,33 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}- Nos produits -{% endblock %}
+
+
+{% block content %}
+
+    <h1 class="text-center">Nos produits</h1>
+
+    <hr class="featurette-divider">
+
+    <div class="row">
+
+        {% for produit in produits %}
+            <div class="col-lg-4">
+                <img class="bd-placeholder-img rounded-circle" width="140" height="140" src="{{asset(produit.visuel ) }}" ></img>
+                <h2>{{ produit.libelle}}</h2>
+                <p>{{ produit.texte }} $</p>
+                <p>{{ produit.prix }}</p>
+
+                <p><a class="btn btn-secondary" href="{{ path('produit',{'id': produit.id})}}" role="button">Shop &raquo;</a></p>
+            </div><!-- /.col-lg-4 -->
+
+        {% endfor %}
+
+    </div><!-- /.row -->
+
+    <hr class="featurette-divider">
+
+
+
+
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nos produits{% endblock %}
+{% block carousel %}{% endblock %}
+
+{% block content %}
+
+  <h1 class="text-center"> Nos Rayons </h1>
+
+  <hr class="featurette-divider">
+
+  <div class="row">
+
+    {% for categorie in categories %}
+    <div class="col-lg-4">
+      <img class="bd-placeholder-img rounded-circle" width="140" height="140" src="{{asset( categorie.visuel )}}" ></img>
+      <h2>{{ categorie.nom }}</h2>
+      <p>{{ categorie.texte }}</p>
+      <p><a class="btn btn-secondary" href="{{ path('rayon',{'id': categorie.id})}}" role="button">Shop &raquo;</a></p>
+    </div><!-- /.col-lg-4 -->
+
+    {% endfor %}
+
+  </div><!-- /.row -->
+
+{% endblock %}

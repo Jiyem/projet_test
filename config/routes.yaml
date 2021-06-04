@@ -1,3 +1,11 @@
-#index:
-#    path: /
-#    controller: App\Controller\DefaultController::index
+hello_page:
+      path: /hello
+      controller: App\Controller\DefaultController::hello
+
+Boutique:
+      path: /boutique
+      controller: App/Controller/BoutiqueController::index
+
+contact:
+      path: /contact
+      controller: App\Controller\DefaultController::contact

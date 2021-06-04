@@ -1,29 +1,18 @@
 <?php
 namespace App\Controller;
+use App\Entity\Produit;
+use App\Entity\Categorie;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Annotation\Route;
 
 class DefaultController extends AbstractController {
 
 
-
-    public function hello($userName) {
-        return $this->render('hello.html.twig' , [
-            'controller_name'=> 'DefaultController',
-            'userName' => $userName,
-        ]);
-    }
-
-    public function affichageListeProduit(){
-        return $this-> render('ListeProduit.html.twig',[
-            "titre" => "Nos produits",
-        ] );
-    }
-
-    public function affichageProduitDetail($nomProduit){
-        return $this-> render('produitDetail.html.twig',[
-            "titre" => $nomProduit,
-        ] );
+    /**
+     * @Route("/hello", name="hello")
+     */
+    public function hello() {
+        return $this->render('hello.html.twig');
     }
 
     public function contact(){
@@ -31,6 +20,9 @@ class DefaultController extends AbstractController {
             "titre" => "Contact",
         ]);
     }
+
+
+
 
 
 }

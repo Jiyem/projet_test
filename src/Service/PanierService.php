@@ -1,165 +1,203 @@
 <?php
+
 namespace App\Service;
+
+use App\Entity\Commande;
+use App\Entity\LigneCommande;
+use App\Entity\Produit;
+use App\Entity\User;
+use App\Repository\ProduitRepository;
+use App\Repository\CommandeRepository;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
-// Un service pour manipuler le contenu de la Boutique
-//  qui est composée de catégories et de produits stockés "en dur"
-class BoutiqueService {
 
-    // renvoie toutes les catégories
-    public function findAllCategories() {
-        return $this->categories;
+class PanierService
+{
+
+
+    private $session; // Le service Session
+    protected $produitRepository;
+    protected $commandeRepository;
+    protected $userRepository;
+    private $entityManager;
+
+
+    // constructeur du service
+    public function __construct(SessionInterface $session, ProduitRepository $produitRepository, CommandeRepository $commandeRepository, EntityManagerInterface $entityManager)
+    {
+
+        // Récupération des services session et BoutiqueService
+        $this->session = $session;
+
+        $this->entityManager = $entityManager;
+
+        //pour utiliser le produitRepository et acceder aux produits
+        $this->produitRepository = $produitRepository;
+
+        //pour utiliser le produitRepository et acceder aux produits
+        $this->commandeRepository = $commandeRepository;
+
+
     }
 
-    // renvoie la categorie dont id == $idCategorie
-    public function findCategorieById(int $idCategorie) {
-        $res = array_filter($this->categories,
-                function ($c) use($idCategorie) {
-            return $c["id"] == $idCategorie;
-        });
-        return (sizeof($res) === 1) ? $res[array_key_first($res)] : null;
+    // ajouterProduit ajoute au panier le produit $id
+    public function ajouterProduit(int $id)
+    {
+
+        $panier = $this->session->get('panier', []);
+
+        //si un produit avec cet id est deja present ds panier alors +1:
+        if (!empty($panier[$id])) {
+            $panier[$id]++;
+        } else {
+            $panier[$id] = 1;
+        }
+
+        $this->session->set('panier', $panier);
     }
 
-    // renvoie le produits dont id == $idProduit
-    public function findProduitById(int $idProduit) {
-        $res = array_filter($this->produits,
-                function ($p) use($idProduit) {
-            return $p["id"] == $idProduit;
-        });
-        return (sizeof($res) === 1) ? $res[array_key_first($res)] : null;
+
+    // getContenu renvoie le contenu du panier
+    public function getContenu(): array
+    {
+        //panier en session
+        $panier = $this->session->get('panier', []);
+
+        //panier avec le detail des produits
+        $monPanier = [];
+
+        //boucle sur le panier pour extraire l'id du produit et la quantité et remplir monpanier
+        foreach ($panier as $id => $quantite) {
+
+            $produit = $this->entityManager->getRepository(Produit::class)->find($id);
+
+            //tableau de couple qui contient le produit et sa quantité
+            $monPanier[] = [
+                //recuperation du produit associé à l'id dans le panier en session
+                'produit' => $produit,
+                'quantite' => $quantite
+            ];
+        }
+        return $monPanier;
     }
 
-    // renvoie tous les produits dont idCategorie == $idCategorie
-    public function findProduitsByCategorie(int $idCategorie) {
-        return array_filter($this->produits,
-                function ($p) use($idCategorie) {
-            return $p["idCategorie"] == $idCategorie;
-        });
+
+    // getTotal renvoie le montant total du panier
+    public function getTotal(): float
+    {
+
+        $total = 0;
+
+        //recuperation $monPanier en faisant appel a la fonction ci-dessus getContenu
+        $monPanier = $this->getContenu();
+
+        foreach ($monPanier as $contenu) {
+
+            //calcul du prix total du panier
+            $total += $contenu['produit']->getPrix() * $contenu['quantite'];
+        }
+        return $total;
+
     }
 
-    // renvoie tous les produits dont libelle ou texte contient $search
-    public function findProduitsByLibelleOrTexte(string $search) {
-        return array_filter($this->produits,
-                function ($p) use ($search) {
-                  return ($search=="" || mb_strpos(mb_strtolower($p["libelle"]." ".$p["texte"]), mb_strtolower($search)) !== false);
-        });
+
+    // supprimerProduit supprime complètement le produit $id du panier
+    public function supprimerProduit(int $id)
+    {
+        $panier = $this->session->get('panier', []);
+
+        //si il existe cet id ds mon panier alors je le supprime
+        if (!empty($panier[$id])) {
+            unset($panier[$id]);
+        }
+
+        //recuperation du panier maj
+        $this->session->set('panier', $panier);
     }
 
-    // constructeur du service : injection des dépendances et tris
-    public function __construct(RequestStack $requestStack) {
-        // Injection du service RequestStack
-        //  afin de pouvoir récupérer la "locale" dans la requête en cours
-        $this->requestStack = $requestStack;
-        // On trie le tableau des catégories selon la locale
-        usort($this->categories, function ($c1, $c2) {
-            return $this->compareSelonLocale($c1["libelle"], $c2["libelle"]);
-        });
-        // On trie le tableau des produits de chaque catégorie selon la locale
-        usort($this->produits, function ($c1, $c2) {
-            return $this->compareSelonLocale($c1["libelle"], $c2["libelle"]);
-        });
+
+    // vider vide complètement le panier
+    public function vider()
+    {
+        $this->session->set('panier', []);
+
     }
 
-    ////////////////////////////////////////////////////////////////////////////
 
-    private function compareSelonLocale(string $s1, $s2) {
-        $collator=new \Collator($this->requestStack->getCurrentRequest()->getLocale());
-        return collator_compare($collator, $s1, $s2);
+    // enleverProduit enlève du panier le produit $id
+    public function enleverProduit(int $id)
+    {
+
+        $panier = $this->session->get('panier', []);
+
+        if ($panier[$id] > 1) {
+            //retirer un produit -1
+            $panier[$id]--;
+        } else {
+            //fonction unset: supprimer un element d'un tableau
+            unset($panier[$id]);
+        }
+        return $this->session->set('panier', $panier);
+
     }
 
-    private $requestStack; // Le service RequestStack qui sera injecté
-    // Le catalogue de la boutique, codé en dur dans un tableau associatif
-    private $categories = [
-        [
-            "id" => 1,
-            "libelle" => "Fruits",
-            "visuel" => "images/fruits.jpg",
-            "texte" => "De la passion ou de ton imagination",
-        ],
-        [
-            "id" => 3,
-            "libelle" => "Junk Food",
-            "visuel" => "images/junk_food.jpg",
-            "texte" => "Chère et cancérogène, tu es prévenu(e)",
-        ],
-        [
-            "id" => 2,
-            "libelle" => "Légumes",
-            "visuel" => "images/legumes.jpg",
-            "texte" => "Plus tu en manges, moins tu en es un"],
-    ];
-    private $produits = [
-        [
-            "id" => 1,
-            "idCategorie" => 1,
-            "libelle" => "Pomme",
-            "texte" => "Elle est bonne pour la tienne",
-            "visuel" => "images/pommes.jpg",
-            "prix" => 3.42
-        ],
-        [
-            "id" => 2,
-            "idCategorie" => 1,
-            "libelle" => "Poire",
-            "texte" => "Ici tu n'en es pas une",
-            "visuel" => "images/poires.jpg",
-            "prix" => 2.11
-        ],
-        [
-            "id" => 3,
-            "idCategorie" => 1,
-            "libelle" => "Pêche",
-            "texte" => "Elle va te la donner",
-            "visuel" => "images/peche.jpg",
-            "prix" => 2.84
-        ],
-        [
-            "id" => 4,
-            "idCategorie" => 2,
-            "libelle" => "Carotte",
-            "texte" => "C'est bon pour ta vue",
-            "visuel" => "images/carottes.jpg",
-            "prix" => 2.90
-        ],
-        [
-            "id" => 5,
-            "idCategorie" => 2,
-            "libelle" => "Tomate",
-            "texte" => "Fruit ou Légume ? Légume",
-            "visuel" => "images/tomates.jpg",
-            "prix" => 1.70
-        ],
-        [
-            "id" => 6,
-            "idCategorie" => 2,
-            "libelle" => "Chou Romanesco",
-            "texte" => "Mange des fractales",
-            "visuel" => "images/romanesco.jpg",
-            "prix" => 1.81
-        ],
-        [
-            "id" => 7,
-            "idCategorie" => 3,
-            "libelle" => "Nutella",
-            "texte" => "C'est bon, sauf pour ta santé",
-            "visuel" => "images/nutella.jpg",
-            "prix" => 4.50
-        ],
-        [
-            "id" => 8,
-            "idCategorie" => 3,
-            "libelle" => "Pizza",
-            "texte" => "Y'a pas pire que za",
-            "visuel" => "images/pizza.jpg",
-            "prix" => 8.25
-        ],
-        [
-            "id" => 9,
-            "idCategorie" => 3,
-            "libelle" => "Oreo",
-            "texte" => "Seulement si tu es un smartphone",
-            "visuel" => "images/oreo.jpg",
-            "prix" => 2.50
-        ],
-    ];
+    public function panierToCommande(User $user)
+    {
+
+        //initialisation du champ dateCreation
+        $dateCreation = new \DateTime();
+
+        //recuperation du contenu du panier
+        $monPanier = $this->getContenu();
+
+        //Creation de la commande pour le client connécte
+        $commande = new Commande();
+
+        //recuperation du user
+        $commande->setUser($user);
+
+        //recuperation de la date
+        $commande->setDateCreation($dateCreation);
+
+        // Figer/persister la donnée user pour l'enregistrement
+        $this->entityManager->persist($commande);
+
+        // enregistrement / maj de la donnée en bd
+        $this->entityManager->flush();
+
+        //Pour chaque produit du panier creation d'une nouvelle entrée dans ligneCommande
+        foreach ($monPanier as $produit) {
+
+            $ligneCommandes = new LigneCommande($commande, $produit);
+            $ligneCommandes->setCommande($commande);
+            $ligneCommandes->setProduit($produit['produit']);
+            $ligneCommandes->setQuantite($produit['quantite']);
+            $ligneCommandes->setPrice($produit['produit']->getPrix());
+            $ligneCommandes->setTotal($produit['produit']->getPrix() * $produit['quantite']);
+            $this->entityManager->persist($ligneCommandes);
+
+            // dd($ligneCommandes);
+        }
+
+        $this->entityManager->flush();
+        $this->vider();
+
+        return  $commande;
+
+    }
 }
+
+/*
+            // getNbProduits renvoie le nombre de produits dans le panier
+            public function getNbProduits() { // à compléter }
+
+
+
+
+
+*/
+
+
