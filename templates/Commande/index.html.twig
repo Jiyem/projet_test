@@ -1,0 +1,72 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mon panier{% endblock %}
+
+{% block content %}
+
+<div class="bg-light p-3">
+
+    <h1>Mon panier</h1>
+
+    {% if contenus | length > 0 %}
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Produit</th>
+                <th></th>
+                <th>Prix</th>
+                <th>Quantité</th>
+                <th>Total</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {{ dump(contenus) }}
+
+
+                 {% for contenu in contenus %}
+                     <tr>
+                         <td>
+                             <img src="{{asset(contenu.produit.visuel ) }}" alt="{{ contenu.produit.libelle}}" height="80px"><br/>
+                         </td>
+                         <td>{{ contenu.produit.libelle }}</td>
+                         <td>{{ contenu.produit.prix }} $</td>
+                         <td>
+                             x {{ contenu.quantite }}<br/>
+
+                             <a href="{{ path('panierAjouter',{'id':contenu.produit.id}) }}">
+                                 <img src="{{ asset('images/plus.png') }}" alt="Ajouter un produit" height="12px"><br/>
+                             </a>
+
+                             <a href="{{ path('panierRetirer',{'id':contenu.produit.id}) }}">
+                                 <img src="{{ asset('images/moins.png') }}" alt="Supprimer un produit" height="12px"><br/>
+                             </a>
+
+                         </td>
+                         <td>{{ contenu.produit.prix * contenu.quantite  }} $</td>
+                         <td>
+                            <a href="{{ path('panierSuppr', {'id': contenu.produit.id })}}" class ="btn btn-danger btn-sm">
+                                <i class="fa fa-trash"></i>
+                            </a>
+                         </td>
+                     </tr>
+                 {% endfor %}
+            </tbody>
+            <tfoot>
+            <tr>
+                <td class="text-right" colspan="3">Total : </td>
+                <td>{{ total }}</td>
+                <td>
+                    <a href="" class ="btn btn-primary btn-sm"> Commander </a>
+                </td>
+                <td></td>
+            </tr>
+            </tfoot>
+        </table>
+    {% else %}
+        <a>Votre panier est vide...</a>
+    {% endif %}
+
+
+</div>
+{% endblock %}
